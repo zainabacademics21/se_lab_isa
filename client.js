@@ -1,45 +1,43 @@
-// Fetch test sentences from Flask (which retrieves them from Firebase)
+// Function to fetch test sentences from the Flask backend
 async function fetchSentences() {
-    let response = await fetch("http://127.0.0.1:5000/get_sentences");  // Flask API endpoint
-    let sentences = await response.json();  
-
-    let sentenceList = document.getElementById("test-sentences");
-    sentenceList.innerHTML = ""; // Clear previous entries
-
-    sentences.forEach(sentence => {
-        let form = document.createElement("form");
-        form.action = "/classify";
-        form.method = "POST";
-        form.style.display = "inline";
-
-        let input = document.createElement("input");
-        input.type = "hidden";
-        input.name = "sentence";
-        input.value = sentence;
-
-        let button = document.createElement("button");
-        button.type = "submit";
-        button.textContent = sentence.length > 100 ? sentence.substring(0, 100) + "..." : sentence;
-
-        form.appendChild(input);
-        form.appendChild(button);
-        sentenceList.appendChild(form);
-    });
+    // Fetch sentences from the backend (Flask app at http://127.0.0.1:5000/get_sentences)
+    let response = await fetch("http://127.0.0.1:5000/get_sentences");
+    if (response.ok) {
+        // Parse the JSON response
+        let sentences = await response.json();
+        
+        // Display sentences in the HTML by appending them to the list
+        const sentencesList = document.getElementById("test-sentences");
+        sentencesList.innerHTML = sentences.map(sentence => `
+            <li class="review-item">
+                <form action="/classify" method="POST" style="display:inline;">
+                    <input type="hidden" name="sentence" value="${sentence}">
+                    <button type="submit">${sentence.substring(0, 100)}...</button>
+                </form>
+            </li>
+        `).join('');
+    } else {
+        // Handle errors if fetching sentences fails
+        console.error("Failed to fetch sentences:", response.status);
+    }
 }
 
-// Send user input to Flask for classification
-async function classifyText() {
-    let text = document.getElementById("user-input").value;
-
+// Function to classify text (called when the user submits a sentence)
+async function classifyText(sentence) {
     let response = await fetch("http://127.0.0.1:5000/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text: sentence })
     });
 
-    let result = await response.json();
-    document.getElementById("result").innerText = "Prediction: " + result.prediction;
+    if (response.ok) {
+        // Display classification results
+        let result = await response.json();
+        document.getElementById("result").innerText = "Prediction: " + result.prediction;
+    } else {
+        console.error("Failed to classify text:", response.status);
+    }
 }
 
-// Fetch sentences when the page loads
+// Trigger the fetchSentences function when the page is loaded
 window.onload = fetchSentences;
